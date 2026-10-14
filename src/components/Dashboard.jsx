@@ -166,9 +166,9 @@ export const Dashboard = () => {
                   type="button"
                   onClick={() => setIsBudgetModalOpen(true)}
                   title="Edit Monthly Budget Limit"
-                  className="inline-flex items-center gap-0.5 px-1 py-0 rounded-full bg-primary/10 hover:bg-primary/20 text-primary text-[8px] font-bold border border-primary/20 transition-colors ml-1"
+                  className="inline-flex items-center gap-0.5 px-0.5 py-0 rounded-full bg-primary/10 hover:bg-primary/20 text-primary text-[7px] font-bold border border-primary/20 transition-colors ml-1"
                 >
-                  <span className="material-symbols-outlined text-[9px]">edit</span>
+                  <span className="material-symbols-outlined text-[8px]">edit</span>
                   <span>Edit</span>
                 </button>
               </div>
