@@ -168,7 +168,7 @@ export const Dashboard = () => {
                   title="Edit Monthly Budget Limit"
                   className="inline-flex items-center gap-0.5 px-0 py-0 rounded-full bg-primary/10 hover:bg-primary/20 text-primary text-[6px] font-bold border border-primary/20 transition-colors ml-1"
                 >
-                  <span className="material-symbols-outlined text-[7px]">edit</span>
+                  <span className="material-symbols-outlined text-[6px]">edit</span>
                   <span>Edit</span>
                 </button>
               </div>
