@@ -11,7 +11,7 @@ import { ExpenseProvider, useExpense } from './context/ExpenseContext';
 
 const AppContent = () => {
   const { activeTab, toastMessage, isBudgetModalOpen, setIsBudgetModalOpen } = useExpense();
-  const [isLocked, setIsLocked] = useState(false);
+  const [isLocked, setIsLocked] = useState(true);
   const lastActivityAt = useRef(0);
 
   useEffect(() => {
