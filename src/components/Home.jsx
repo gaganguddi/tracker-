@@ -9,6 +9,7 @@ export const Home = () => {
     percentUsed,
     monthSpent,
     weekSpent,
+    expenses,
     categoryTotals,
     setIsBudgetModalOpen,
     googleConfig,
@@ -17,6 +18,15 @@ export const Home = () => {
 
   const topCategory = categoryTotals[0];
   const overBudget = remainingBudget < 0;
+  const today = new Date();
+  const elapsedDays = Math.max(1, today.getDate());
+  const monthExpenseCount = expenses.filter((expense) => {
+    const date = new Date(`${String(expense.date || '').split('T')[0]}T00:00:00`);
+    return !Number.isNaN(date.getTime())
+      && date.getFullYear() === today.getFullYear()
+      && date.getMonth() === today.getMonth();
+  }).length;
+  const dailyAverage = monthSpent / elapsedDays;
 
   return (
     <div className="flex flex-col gap-3 pt-2">
@@ -28,6 +38,30 @@ export const Home = () => {
           Connect your Google Sheet (script URL). No sign-in needed.
         </button>
       )}
+
+      <section className="rounded-2xl bg-gradient-to-br from-primary/20 via-surface-container to-surface-container border border-primary/25 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-primary font-bold">Expense analysis</p>
+            <p className="text-[11px] text-on-surface-variant mt-0.5">Your spending this month</p>
+          </div>
+          <span className="material-symbols-outlined text-primary">insights</span>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-xl bg-surface/70 p-2.5">
+            <p className="text-[9px] uppercase text-on-surface-variant">Entries</p>
+            <p className="text-base font-bold tabular-nums text-on-surface mt-1">{monthExpenseCount}</p>
+          </div>
+          <div className="rounded-xl bg-surface/70 p-2.5">
+            <p className="text-[9px] uppercase text-on-surface-variant">Daily avg.</p>
+            <p className="text-base font-bold tabular-nums text-on-surface mt-1">{formatMoney(dailyAverage)}</p>
+          </div>
+          <div className="rounded-xl bg-surface/70 p-2.5">
+            <p className="text-[9px] uppercase text-on-surface-variant">Top category</p>
+            <p className="text-xs font-bold text-on-surface mt-1 truncate">{topCategory?.amount > 0 ? topCategory.name : '—'}</p>
+          </div>
+        </div>
+      </section>
 
       <section className="rounded-2xl bg-surface-container border border-outline-variant/30 p-4">
         <div className="flex items-center justify-between mb-2">

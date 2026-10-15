@@ -12,6 +12,7 @@ import {
   fetchBudgetFromGoogle,
   fetchExpensesFromGoogle,
   fetchFromGoogleSheetId,
+  DEFAULT_GOOGLE_WEB_APP_URL,
   setBudgetOnGoogle,
   syncExpenseToGoogle
 } from '../services/googleSyncService';
@@ -20,7 +21,7 @@ const ExpenseContext = createContext(null);
 
 export const ExpenseProvider = ({ children }) => {
   const envSpreadsheetId = import.meta.env.VITE_GOOGLE_SPREADSHEET_ID || '';
-  const envWebAppUrl = import.meta.env.VITE_GOOGLE_WEB_APP_URL || '';
+  const envWebAppUrl = import.meta.env.VITE_GOOGLE_WEB_APP_URL || DEFAULT_GOOGLE_WEB_APP_URL;
 
   const [expenses, setExpenses] = useState([]);
   const [activeTab, setActiveTab] = useState('home');

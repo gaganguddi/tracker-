@@ -43,9 +43,9 @@ const AppContent = () => {
   };
 
   return (
-    <div className="min-h-screen bg-surface text-on-surface flex flex-col font-body-md antialiased">
+    <div className="app-shell h-[100dvh] overflow-hidden bg-surface text-on-surface flex flex-col font-body-md antialiased">
       <Header />
-      <main className="flex-1 w-full max-w-[420px] mx-auto pt-16 pb-20 px-3">
+      <main className="app-content no-scrollbar flex-1 min-h-0 w-full max-w-[420px] mx-auto pt-16 pb-20 px-3 overflow-y-auto overflow-x-hidden overscroll-contain">
         {activeTab === 'home' && <Home />}
         {activeTab === 'add-expense' && <AddExpense />}
         {activeTab === 'history' && <History />}

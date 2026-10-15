@@ -1,4 +1,8 @@
-﻿export const GOOGLE_APPS_SCRIPT_TEMPLATE = `/**
+// This deployment is the app's default backend, so a new install can save
+// immediately without asking the user to paste the URL again.
+export const DEFAULT_GOOGLE_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyIqXtKcRiIPlb_1tNu11szvAu_j1YS7dasvVozk7pJ6N2MrkvTdt89j3Dr2a1t3yrL/exec';
+
+export const GOOGLE_APPS_SCRIPT_TEMPLATE = `/**
  * Expense Tracker â€” Google Sheets backend
  * Deploy as Web App: Execute as Me, Who has access: Anyone
  */
