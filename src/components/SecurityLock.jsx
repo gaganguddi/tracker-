@@ -6,9 +6,11 @@ export const SecurityLock = ({ onUnlock }) => {
   const [error, setError] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
 
+  const masterPassword = import.meta.env.VITE_MASTER_PASSWORD || 'Gagan@03';
+
   const handleSubmit = (e) => {
     e?.preventDefault();
-    if (password === 'Gagan@03') {
+    if (password === masterPassword) {
       setIsUnlocking(true);
       setError(false);
       setTimeout(() => {

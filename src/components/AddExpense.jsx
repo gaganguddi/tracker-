@@ -12,9 +12,9 @@ export const AddExpense = () => {
     googleConfig
   } = useExpense();
 
-  const [currentAmount, setCurrentAmount] = useState('450.00');
+  const [currentAmount, setCurrentAmount] = useState('0');
   const [selectedCategory, setSelectedCategory] = useState('Food & Dining');
-  const [merchant, setMerchant] = useState('Swiggy');
+  const [merchant, setMerchant] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('UPI (GPay/PhonePe)');
   const [notes, setNotes] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);

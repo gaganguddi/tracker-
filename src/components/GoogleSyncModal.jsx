@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useExpense } from '../context/ExpenseContext';
-import { GOOGLE_APPS_SCRIPT_TEMPLATE, testGoogleConnection, exportExpensesToCSV } from '../services/googleSyncService';
+import { GOOGLE_APPS_SCRIPT_TEMPLATE, testGoogleConnection, exportExpensesToCSV, requestGoogleAuthToken, appendExpenseViaGoogleAPI } from '../services/googleSyncService';
 
 export const GoogleSyncModal = ({ onLockVault }) => {
   const {
@@ -133,6 +133,68 @@ export const GoogleSyncModal = ({ onLockVault }) => {
             )}
           </div>
 
+          {/* Direct Google Cloud Push Authorization Banner */}
+          {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+            <div className="bg-surface-container-high p-3 rounded-2xl border border-primary/30 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary text-[20px]">verified_user</span>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-on-surface">Direct Google Account Push</span>
+                    <span className="text-[10px] text-on-surface-variant">Push straight to your sheet via Google OAuth</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const token = await requestGoogleAuthToken();
+                        showToast("Google Account connected! Testing push...", "info");
+                        // Push a quick test expense directly to sheet
+                        const testExp = {
+                          id: `tx-${Date.now()}`,
+                          date: new Date().toISOString().split('T')[0],
+                          category: 'Other',
+                          merchant: 'SpendWise Test Sync',
+                          amount: 10,
+                          paymentMethod: 'UPI',
+                          notes: 'Verified direct Google Cloud push'
+                        };
+                        await appendExpenseViaGoogleAPI(import.meta.env.VITE_GOOGLE_SPREADSHEET_ID, testExp);
+                        showToast("Success! Test row added to your Google Sheet!");
+                      } catch (err) {
+                        showToast(err.message || "Failed to push row to Google Sheet", "error");
+                      }
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-bold shadow-sm hover:brightness-110 active:scale-95 transition-all flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">cloud_upload</span>
+                    <span>Sign In & Test Push</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Authorized Origin Help */}
+              <div className="bg-surface-container-lowest p-2 rounded-xl border border-outline-variant/30 flex items-center justify-between text-[10px]">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-on-surface-variant shrink-0 font-medium">Your App Origin:</span>
+                  <span className="font-mono text-primary truncate select-all">{window.location.origin}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.origin);
+                    showToast("Origin URL copied: " + window.location.origin);
+                  }}
+                  className="text-primary hover:underline font-semibold shrink-0 ml-1.5"
+                >
+                  Copy Origin
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Connection Mode Tabs */}
           <div className="flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30">
             <button
@@ -164,10 +226,33 @@ export const GoogleSyncModal = ({ onLockVault }) => {
             <div className="space-y-2.5 bg-surface-container-high/60 p-4 rounded-2xl border border-outline-variant/30">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-on-surface">
-                  Paste Google Sheet Link or Spreadsheet ID
+                  Google Sheet Link or Spreadsheet ID
                 </span>
                 <span className="text-[10px] text-primary font-medium">Fastest Real Data Setup</span>
               </div>
+
+              {/* Env Sheet ID Quick Connect Button */}
+              {import.meta.env.VITE_GOOGLE_SPREADSHEET_ID && (
+                <div className="bg-primary/10 border border-primary/20 rounded-xl p-2.5 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 min-w-0 pr-1">
+                    <span className="material-symbols-outlined text-primary text-[16px] shrink-0">check_circle</span>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[11px] font-bold text-on-surface truncate">Configured in .env</span>
+                      <span className="text-[9px] text-primary font-mono truncate">{import.meta.env.VITE_GOOGLE_SPREADSHEET_ID}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSheetInput(import.meta.env.VITE_GOOGLE_SPREADSHEET_ID);
+                      pullFromDirectSheetId(import.meta.env.VITE_GOOGLE_SPREADSHEET_ID);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-primary text-on-primary text-[10px] font-bold shrink-0 shadow-sm hover:brightness-110 active:scale-95 transition-all"
+                  >
+                    Sync Now
+                  </button>
+                </div>
+              )}
 
               <div className="flex gap-2">
                 <input
@@ -175,20 +260,20 @@ export const GoogleSyncModal = ({ onLockVault }) => {
                   value={sheetInput}
                   onChange={(e) => setSheetInput(e.target.value)}
                   placeholder="https://docs.google.com/spreadsheets/d/.../edit or Sheet ID"
-                  className="flex-1 bg-surface-container text-on-surface text-xs rounded-xl px-3 py-2.5 border border-outline-variant/30 focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="flex-1 bg-surface-container text-on-surface text-xs rounded-xl px-3 py-2 border border-outline-variant/30 focus:outline-none focus:ring-1 focus:ring-primary"
                 />
                 <button
                   type="button"
                   onClick={handleConnectSheetId}
                   disabled={syncStatus === 'syncing' || !sheetInput.trim()}
-                  className="px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold shadow-md hover:brightness-110 transition-all shrink-0 disabled:opacity-40"
+                  className="px-3.5 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold shadow-md hover:brightness-110 transition-all shrink-0 disabled:opacity-40"
                 >
-                  {syncStatus === 'syncing' ? 'Fetching...' : 'Fetch Live Data'}
+                  {syncStatus === 'syncing' ? 'Fetching...' : 'Fetch Live'}
                 </button>
               </div>
 
-              <p className="text-[11px] text-on-surface-variant leading-relaxed">
-                <strong className="text-on-surface">How to use:</strong> Open your Google Sheet, click <strong className="text-on-surface">Share &gt; Anyone with link can view</strong>, copy the sheet URL and paste it here. SpendWise will fetch your real transactions directly!
+              <p className="text-[10px] text-on-surface-variant leading-relaxed">
+                <strong className="text-on-surface">Requirement:</strong> In your Google Sheet, ensure <strong className="text-on-surface">Share &gt; Anyone with link can view</strong> is set so SpendWise can pull your rows directly!
               </p>
             </div>
           )}

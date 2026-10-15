@@ -5,7 +5,11 @@ import {
   syncAllExpensesToGoogle,
   fetchExpensesFromGoogle,
   fetchFromGoogleSheetId,
-  testGoogleConnection
+  testGoogleConnection,
+  appendExpenseViaGoogleAPI,
+  uploadReceiptToGoogleDriveAPI,
+  requestGoogleAuthToken,
+  isGoogleAuthActive
 } from '../services/googleSyncService';
 
 const ExpenseContext = createContext(null);
@@ -41,25 +45,46 @@ export const ExpenseProvider = ({ children }) => {
   const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
-  // Google Sheets & Drive Settings
+  // Google Sheets & Drive Settings initialized from environment variables or localStorage
+  const envSpreadsheetId = import.meta.env.VITE_GOOGLE_SPREADSHEET_ID || '';
+  const envDriveFolderId = import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID || '';
+  const envApiKey = import.meta.env.VITE_GOOGLE_API_KEY || '';
+  const envClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+
   const [googleConfig, setGoogleConfig] = useState(() => {
     try {
       const saved = localStorage.getItem('spendwise_google_config');
-      return saved ? JSON.parse(saved) : {
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          ...parsed,
+          sheetId: parsed.sheetId || envSpreadsheetId,
+          driveFolderId: parsed.driveFolderId || envDriveFolderId,
+          apiKey: parsed.apiKey || envApiKey,
+          clientId: parsed.clientId || envClientId
+        };
+      }
+      return {
         webAppUrl: '',
-        sheetId: '',
+        sheetId: envSpreadsheetId,
+        driveFolderId: envDriveFolderId,
+        apiKey: envApiKey,
+        clientId: envClientId,
         driveFolderName: 'SpendWise Receipts',
         autoSync: true,
-        isConnected: false,
+        isConnected: Boolean(envSpreadsheetId),
         lastSyncTime: null
       };
     } catch {
       return {
         webAppUrl: '',
-        sheetId: '',
+        sheetId: envSpreadsheetId,
+        driveFolderId: envDriveFolderId,
+        apiKey: envApiKey,
+        clientId: envClientId,
         driveFolderName: 'SpendWise Receipts',
         autoSync: true,
-        isConnected: false,
+        isConnected: Boolean(envSpreadsheetId),
         lastSyncTime: null
       };
     }
@@ -171,8 +196,13 @@ export const ExpenseProvider = ({ children }) => {
     setExpenses(prev => [newExpense, ...prev]);
     showToast(`Logged ${currencySymbol}${Number(newExpense.amount).toFixed(2)} at ${newExpense.merchant}!`);
 
-    // If Google Apps Script is connected, sync asynchronously
-    if (googleConfig.webAppUrl && googleConfig.autoSync) {
+    // 1. Try Direct Google Sheets & Drive v4 API if Client ID and Sheet ID exist
+    const spreadsheetId = googleConfig.sheetId || import.meta.env.VITE_GOOGLE_SPREADSHEET_ID;
+    const driveFolderId = googleConfig.driveFolderId || import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID;
+    const clientId = googleConfig.clientId || import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+    if (googleConfig.webAppUrl) {
+      // Push via configured Apps Script Web App
       setSyncStatus('syncing');
       try {
         const result = await syncExpenseToGoogle(googleConfig.webAppUrl, newExpense, receiptFile);
@@ -186,14 +216,65 @@ export const ExpenseProvider = ({ children }) => {
           }
           setSyncStatus('synced');
           setGoogleConfig(prev => ({ ...prev, lastSyncTime: new Date().toLocaleTimeString(), isConnected: true }));
-          showToast(`Saved to Google Sheets & Receipt uploaded to Drive!`, 'info');
+          showToast(`Saved locally & pushed to Google Sheet!`, 'success');
         } else {
           setSyncStatus('error');
+          showToast(`Could not push to Google: ${result?.error || 'Check Web App URL'}`, 'error');
         }
       } catch (err) {
         console.error("Auto sync failed:", err);
         setSyncStatus('error');
       }
+    } else if (spreadsheetId && clientId) {
+      // Only push if the user has already authenticated (token cached from Sign In button)
+      if (!isGoogleAuthActive()) {
+        showToast(`Saved locally! Tap the sync icon → "Sign In" to enable Google Sheet auto-sync.`, 'info');
+        setSyncStatus('idle');
+        return;
+      }
+
+      // Push directly using Google Sheets REST API
+      setSyncStatus('syncing');
+      try {
+        let driveReceiptUrl = newExpense.receiptUrl || '';
+        let driveReceiptName = newExpense.receiptDriveName || '';
+
+        // If receipt file attached, upload to Google Drive first
+        if (receiptFile) {
+          try {
+            const driveUpload = await uploadReceiptToGoogleDriveAPI(driveFolderId, receiptFile);
+            driveReceiptUrl = driveUpload.receiptUrl || '';
+            driveReceiptName = driveUpload.receiptDriveName || '';
+            setExpenses(prev => prev.map(e => e.id === newExpense.id ? { 
+              ...e, 
+              receiptUrl: driveReceiptUrl, 
+              receiptDriveId: driveUpload.receiptDriveId,
+              receiptDriveName: driveReceiptName
+            } : e));
+          } catch (driveErr) {
+            console.warn("Drive upload skipped:", driveErr.message);
+          }
+        }
+
+        // Append row to Google Sheet
+        await appendExpenseViaGoogleAPI(spreadsheetId, newExpense, driveReceiptUrl, driveReceiptName);
+        setSyncStatus('synced');
+        setGoogleConfig(prev => ({ ...prev, lastSyncTime: new Date().toLocaleTimeString(), isConnected: true }));
+        showToast(`✅ Expense pushed to Google Sheet!`, 'success');
+      } catch (apiErr) {
+        console.warn("Direct Google API push failed:", apiErr.message);
+        setSyncStatus('error');
+        // If token expired, clear it so next push will re-authenticate
+        if (apiErr.message && (apiErr.message.includes('401') || apiErr.message.toLowerCase().includes('unauthorized') || apiErr.message.toLowerCase().includes('invalid'))) {
+          localStorage.removeItem('spendwise_google_access_token');
+          localStorage.removeItem('spendwise_google_token_expiry');
+          showToast(`Session expired. Please Sign In again via the sync icon.`, 'error');
+        } else {
+          showToast(`Saved locally. Sheet sync failed: ${apiErr.message}`, 'error');
+        }
+      }
+    } else {
+      showToast(`Saved locally. Connect your Google Sheet to auto-sync!`, 'info');
     }
   };
 
