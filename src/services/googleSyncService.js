@@ -7,8 +7,8 @@ export const GOOGLE_APPS_SCRIPT_TEMPLATE = `/**
  */
 
 const SHEET_NAME = 'SpendWise Expenses';
-const DRIVE_FOLDER_ID = '${import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID || "K1na7VyvKYAI3oqhiWFSmKvQ0vnuyWlT"}';
-const TARGET_SPREADSHEET_ID = '${import.meta.env.VITE_GOOGLE_SPREADSHEET_ID || "1_2rixj_QYHq-iyzUhy6VhMexI1_VDuiihfXXixwcBLY"}';
+const DRIVE_FOLDER_ID = '${import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID || ""}';
+const TARGET_SPREADSHEET_ID = '${import.meta.env.VITE_GOOGLE_SPREADSHEET_ID || ""}';
 
 function doGet(e) {
   const p = (e && e.parameter) || {};
